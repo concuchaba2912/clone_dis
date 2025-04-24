@@ -1,0 +1,74 @@
+// Docker configuration
+// docker-compose.yml
+version: '3'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  server:
+    build: ./server
+    container_name: discord_clone_server
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/discord-clone
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    container_name: discord_clone_client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+// Start-up script - save as setup.sh
+#!/bin/bash
+
+# Update packages
+sudo apt-get update
+sudo apt-get upgrade -y
+
+# Install Docker and Docker Compose
+sudo apt-get install -y docker.io docker-compose
+
+# Install Node.js and npm
+sudo apt-get install -y nodejs npm
+
+# Install MongoDB
+sudo apt-get install -y mongodb
+
+# Start MongoDB service
+sudo systemctl start mongodb
+sudo systemctl enable mongodb
+
+# Install Ngrok
+curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
+
+# Clone the repository (assuming you've pushed it to GitHub or similar)
+# git clone https://github.com/yourusername/discord-clone.git
+# cd discord-clone
+
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Start Ngrok to expose port 3000 (frontend) and 5000 (backend)
+ngrok http 3000 &
+ngrok http 5000 &
+
+echo "Discord clone is now running!"
+echo "Check the ngrok URLs above to access your application from the internet."
